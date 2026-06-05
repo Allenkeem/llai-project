@@ -69,6 +69,9 @@ python src/viz.py                         # → outputs/figures/*.png (10종)
 # 7) 코로플레스 지도 (시도 경계 → 권역 dissolve)
 python src/map_viz.py                     # → outputs/figures/fig7_map_*.png, outputs/maps/*.html
 
+# 8) 서울 제외 비교 (재정규화 → 지방 간 상대 구조)
+python src/exclude_seoul.py               # → *_exseoul 테이블·도표·지도
+
 # 데이터 없이 로직만 검증: --demo
 python src/index/compute_llai.py --demo
 ```

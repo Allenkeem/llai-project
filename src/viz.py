@@ -32,14 +32,14 @@ def setup_font() -> None:
     plt.rcParams["figure.dpi"] = 110
 
 
-def _load(unit: str) -> pd.DataFrame:
-    llai = pd.read_csv(OUTPUTS / "tables" / f"llai_{unit}.csv")
-    clu = pd.read_csv(OUTPUTS / "tables" / f"clusters_{unit}.csv")[["region", "cluster_rank"]]
+def _load(unit: str, tag: str = "") -> pd.DataFrame:
+    llai = pd.read_csv(OUTPUTS / "tables" / f"llai_{unit}{tag}.csv")
+    clu = pd.read_csv(OUTPUTS / "tables" / f"clusters_{unit}{tag}.csv")[["region", "cluster_rank"]]
     return llai.merge(clu, on="region", how="left")
 
 
-def fig_llai_ranking(unit: str, save=True):
-    df = _load(unit).sort_values("LLAI")
+def fig_llai_ranking(unit: str, save=True, tag: str = ""):
+    df = _load(unit, tag).sort_values("LLAI")
     colors = plt.cm.RdYlBu(np.linspace(0.15, 0.85, df["cluster_rank"].nunique()))
     c = [colors[int(r)] for r in df["cluster_rank"]]
     fig, ax = plt.subplots(figsize=(8, 5))
@@ -47,16 +47,17 @@ def fig_llai_ranking(unit: str, save=True):
     for y, v in enumerate(df["LLAI"]):
         ax.text(v + 1, y, f"{v:.1f}", va="center", fontsize=9)
     ax.set_xlabel("LLAI (0~100)")
-    ax.set_title(f"권역별 종합 법률 접근성 지수 LLAI ({unit}, 2024)")
+    sub = " · 서울 제외" if tag else ""
+    ax.set_title(f"권역별 종합 법률 접근성 지수 LLAI ({unit}{sub}, 2024)")
     ax.margins(x=0.12)
     fig.tight_layout()
     if save:
-        fig.savefig(FIG / f"fig1_llai_ranking_{unit}.png", bbox_inches="tight")
+        fig.savefig(FIG / f"fig1_llai_ranking_{unit}{tag}.png", bbox_inches="tight")
     return fig
 
 
-def fig_scatter_a1_a2(unit: str, save=True):
-    df = _load(unit)
+def fig_scatter_a1_a2(unit: str, save=True, tag: str = ""):
+    df = _load(unit, tag)
     fig, ax = plt.subplots(figsize=(7, 5.5))
     sc = ax.scatter(df["A1"], df["A2"], s=df["LLAI"] * 4 + 30,
                     c=df["cluster_rank"], cmap="RdYlBu_r", edgecolor="k", alpha=0.85)
@@ -65,15 +66,16 @@ def fig_scatter_a1_a2(unit: str, save=True):
                     xytext=(4, 4), textcoords="offset points")
     ax.set_xlabel("A1: 인구 10만명당 변호사 수 (↑ 좋음)")
     ax.set_ylabel("A2: 변호사 1인당 사건 수 (↓ 좋음)")
-    ax.set_title(f"변호사 접근성 vs 사건 부담 ({unit})\n점 크기=LLAI, 색=클러스터")
+    sub = " · 서울 제외" if tag else ""
+    ax.set_title(f"변호사 접근성 vs 사건 부담 ({unit}{sub})\n점 크기=LLAI, 색=클러스터")
     fig.tight_layout()
     if save:
-        fig.savefig(FIG / f"fig2_scatter_a1_a2_{unit}.png", bbox_inches="tight")
+        fig.savefig(FIG / f"fig2_scatter_a1_a2_{unit}{tag}.png", bbox_inches="tight")
     return fig
 
 
-def fig_subindicators(unit: str, save=True):
-    df = _load(unit).sort_values("LLAI", ascending=False)
+def fig_subindicators(unit: str, save=True, tag: str = ""):
+    df = _load(unit, tag).sort_values("LLAI", ascending=False)
     M = df.set_index("region")[["A1n", "A2n_inv", "A3n"]]
     M.columns = ["A1 변호사", "A2 사건부담(역)", "A3 취약계층"]
     fig, ax = plt.subplots(figsize=(6, 5.5))
@@ -83,16 +85,17 @@ def fig_subindicators(unit: str, save=True):
     for i in range(len(M)):
         for j in range(3):
             ax.text(j, i, f"{M.values[i, j]:.2f}", ha="center", va="center", fontsize=8)
-    ax.set_title(f"정규화 세부지표 (0~1, {unit})")
+    sub = " · 서울 제외" if tag else ""
+    ax.set_title(f"정규화 세부지표 (0~1, {unit}{sub})")
     fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
     fig.tight_layout()
     if save:
-        fig.savefig(FIG / f"fig3_subindicators_{unit}.png", bbox_inches="tight")
+        fig.savefig(FIG / f"fig3_subindicators_{unit}{tag}.png", bbox_inches="tight")
     return fig
 
 
-def fig_weights(unit: str, save=True):
-    df = _load(unit).sort_values("LLAI_entropy", ascending=False)
+def fig_weights(unit: str, save=True, tag: str = ""):
+    df = _load(unit, tag).sort_values("LLAI_entropy", ascending=False)
     x = np.arange(len(df))
     w = 0.26
     fig, ax = plt.subplots(figsize=(9, 5))
@@ -101,11 +104,12 @@ def fig_weights(unit: str, save=True):
     ax.bar(x + w, df["LLAI_pca"], w, label="PCA")
     ax.set_xticks(x, df["region"], rotation=45, ha="right", fontsize=9)
     ax.set_ylabel("LLAI")
-    ax.set_title(f"가중치 방식별 LLAI 비교 ({unit})")
+    sub = " · 서울 제외" if tag else ""
+    ax.set_title(f"가중치 방식별 LLAI 비교 ({unit}{sub})")
     ax.legend()
     fig.tight_layout()
     if save:
-        fig.savefig(FIG / f"fig4_weights_{unit}.png", bbox_inches="tight")
+        fig.savefig(FIG / f"fig4_weights_{unit}{tag}.png", bbox_inches="tight")
     return fig
 
 
