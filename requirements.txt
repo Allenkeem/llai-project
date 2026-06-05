@@ -1,0 +1,16 @@
+# 핵심 (설치됨)
+pandas
+numpy
+scikit-learn
+beautifulsoup4
+requests
+# PDF (설치됨) — 변호사백서 시계열 보강 시
+pymupdf
+# 추가 설치 필요
+statsmodels      # 패널 회귀 (4주차)
+geopandas        # 코로플레스 지도 (5주차)
+folium           # 인터랙티브 지도
+plotly           # 대시보드
+matplotlib
+seaborn
+openpyxl         # 엑셀(.xlsx) 읽기 — 법원/공단 통계
