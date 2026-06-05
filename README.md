@@ -16,7 +16,7 @@
 | 법률구조 지역별 통계 | https://www.klac.or.kr/disclosure/countryStatistic.do · https://kosis.kr | 엑셀 | 2012~2025H1 |
 | 법원 사건 통계(사법연감) | https://www.scourt.go.kr/portal/justicesta/JusticestaListAction.work?gubun=10 | 엑셀/PDF | 2010~ |
 | 변호사 회원현황(지방회별) | https://www.koreanbar.or.kr/pages/introduce/stat.asp | HTML(스냅샷) | 현재 |
-| 행정구역 경계 SHP | https://sgis.kostat.go.kr | SHP | 최신 |
+| 시도 경계 GeoJSON | southkorea-maps (통계청 2018) | GeoJSON | 2018 |
 | (보조) 공공데이터포털 | https://www.data.go.kr | API/파일 | - |
 
 ## 환경
@@ -65,6 +65,9 @@ python src/model/cluster.py               # → outputs/tables/clusters_*.csv
 # 6) 가설검정 · 시각화
 python src/model/hypothesis.py            # H1~H4 검정
 python src/viz.py                         # → outputs/figures/*.png (10종)
+
+# 7) 코로플레스 지도 (시도 경계 → 권역 dissolve)
+python src/map_viz.py                     # → outputs/figures/fig7_map_*.png, outputs/maps/*.html
 
 # 데이터 없이 로직만 검증: --demo
 python src/index/compute_llai.py --demo
