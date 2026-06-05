@@ -60,7 +60,11 @@ python src/prepare/build_panel.py         # → data/processed/panel_region10.cs
 python src/index/compute_llai.py          # → outputs/tables/llai.csv
 
 # 5) 클러스터링 — K-means + Elbow/Silhouette
-python src/model/cluster.py               # → outputs/tables/clusters.csv
+python src/model/cluster.py               # → outputs/tables/clusters_*.csv
+
+# 6) 가설검정 · 시각화
+python src/model/hypothesis.py            # H1~H4 검정
+python src/viz.py                         # → outputs/figures/*.png (10종)
 
 # 데이터 없이 로직만 검증: --demo
 python src/index/compute_llai.py --demo

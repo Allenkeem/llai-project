@@ -140,6 +140,32 @@ def normalize_to_region10(name: str) -> str | None:
     return None
 
 
+# 시도명 표준화: 옛/신 명칭 변이를 region_mapping의 정식 17개 명칭으로 통일.
+# (강원도↔강원특별자치도, 전라북도↔전북특별자치도 등 출처별 표기 차이 흡수)
+# 3글자 접두(충청북/경상남 등)를 2글자보다 먼저 검사해 충/경/전 모호성 제거.
+_CANON_ORDER = [
+    ("서울", "서울특별시"), ("부산", "부산광역시"), ("대구", "대구광역시"),
+    ("인천", "인천광역시"), ("광주", "광주광역시"), ("대전", "대전광역시"),
+    ("울산", "울산광역시"), ("세종", "세종특별자치시"), ("경기", "경기도"),
+    ("강원", "강원특별자치도"),
+    ("충청북", "충청북도"), ("충청남", "충청남도"), ("충북", "충청북도"), ("충남", "충청남도"),
+    ("전라북", "전북특별자치도"), ("전라남", "전라남도"), ("전북", "전북특별자치도"), ("전남", "전라남도"),
+    ("경상북", "경상북도"), ("경상남", "경상남도"), ("경북", "경상북도"), ("경남", "경상남도"),
+    ("제주", "제주특별자치도"),
+]
+
+
+def canonical_sido(name: str) -> str | None:
+    """시도명 변이를 정식 17개 명칭으로 표준화. 못 찾으면 None."""
+    if not isinstance(name, str):
+        return None
+    key = name.strip().replace(" ", "")
+    for token, full in _CANON_ORDER:
+        if key.startswith(token):
+            return full
+    return None
+
+
 def normalize_court(name: str) -> str | None:
     """법원(관내)명을 region13으로. 접두 도시 토큰으로 판정. 못 찾으면 None."""
     if not isinstance(name, str):
