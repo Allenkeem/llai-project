@@ -146,4 +146,7 @@ region_mapping.csv  PLAN.md  requirements.txt
 ## 환경
 Python 3.13 · pandas · numpy · scikit-learn · scipy · statsmodels · matplotlib · seaborn · geopandas · folium · openpyxl · pymupdf
 
-상세 계획: [PLAN.md](PLAN.md)
+## 문서
+- 📄 **최종 보고서**: [reports/보고서.md](reports/보고서.md)
+- 🎤 발표 개요: [reports/발표_개요.md](reports/발표_개요.md)
+- 상세 계획: [PLAN.md](PLAN.md)
