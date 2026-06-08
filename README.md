@@ -148,5 +148,5 @@ Python 3.13 · pandas · numpy · scikit-learn · scipy · statsmodels · matplo
 
 ## 문서
 - 📄 **최종 보고서**: [reports/보고서.md](reports/보고서.md)
-- 🎤 발표 개요: [reports/발표_개요.md](reports/발표_개요.md)
+- 📊 **발표 슬라이드**: [reports/발표자료.pptx](reports/발표자료.pptx) (13장, 그림 임베드) · 구성안 [발표_개요.md](reports/발표_개요.md)
 - 상세 계획: [PLAN.md](PLAN.md)
