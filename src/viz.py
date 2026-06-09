@@ -40,7 +40,8 @@ def _load(unit: str, tag: str = "") -> pd.DataFrame:
 
 def fig_llai_ranking(unit: str, save=True, tag: str = ""):
     df = _load(unit, tag).sort_values("LLAI")
-    colors = plt.cm.RdYlBu(np.linspace(0.15, 0.85, df["cluster_rank"].nunique()))
+    # 지도와 색 일치: 고접근성(클러스터 0)=파랑, 저접근성=빨강 (RdYlBu에서 1=파랑)
+    colors = plt.cm.RdYlBu(np.linspace(0.85, 0.15, df["cluster_rank"].nunique()))
     c = [colors[int(r)] for r in df["cluster_rank"]]
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.barh(df["region"], df["LLAI"], color=c)
