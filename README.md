@@ -102,6 +102,8 @@ python src/model/cluster.py
 # 6) 가설검정 · 시각화
 python src/model/hypothesis.py            # H1~H4
 python src/model/lawyer_trend.py          # H4 직접: 변호사 집중도 2009 vs 2026
+python src/model/lawyer_panel.py          # H4 확장: 연도별 집중도 '추세'(Wayback 복원, 네트워크 필요)
+python src/model/regression.py            # 구조요인→변호사밀도(A1) 회귀 — 석사논문 방법론 다리
 python src/viz.py                         # 도표 10종 → outputs/figures/
 
 # 7) 코로플레스 지도 (시도 경계 → 권역 dissolve)
@@ -114,20 +116,38 @@ python src/exclude_seoul.py               # → *_exseoul 산출물
 python src/index/compute_llai.py --demo
 ```
 
+### (선택) 확장 데이터 — 선행연구(조민하 2021) 발전용
+4종 데이터를 추가하면 관련 분석이 자동 활성화된다(없으면 건너뜀). 수집법: [`data/raw/COLLECTION_GUIDE.md`](data/raw/COLLECTION_GUIDE.md).
+
+```bash
+python src/prepare/load_quasi.py          # 유사법무직렬(법무사·변리사·세무사) → interim
+python src/prepare/build_panel.py         # 사업체수·판사수·유사직렬·다년 A2 자동 흡수
+python src/model/regression.py            # 사업체수→demand-pull · 판사수→논문 회귀 재현(데이터 있을 때)
+python src/model/quasi_legal.py           # '무변촌' 재정의: 변호사↓ 지역을 유사직렬이 메우나
+python src/model/court_trend.py           # 과거 사법연감 다년 → 본안사건·인구당 사건수 추세
+```
+
+| 추가 데이터 | 여는 분석 | 활성화 파일 |
+|---|---|---|
+| 사업체수(KOSIS) | demand-pull 실측 | `data/raw/kosis/business_count_sido.csv` |
+| 판사수(대법원규칙) | 논문 회귀 1:1 재현 | `data/raw/court/judges_by_region.csv` |
+| 유사법무직렬 | 무변촌 재정의 | `data/raw/quasi/quasi_legal.csv` |
+| 과거 사법연감 | A2 다년 시계열 | `data/raw/court/(YYYY)년_사건개황/` |
+
 ---
 
 ## 폴더 구조
 
 ```
 data/
-  raw/{bar,kosis,klac,court,geo}   원본
+  raw/{bar,kosis,klac,court,quasi,geo}  원본 (+ COLLECTION_GUIDE.md, *.template.csv)
   interim/                         정제 tidy
   processed/                       region10·region13 패널
 src/
-  collect/scrape_bar.py            변협 스크랩
-  prepare/{load_kosis,load_klac,load_court,build_panel}.py
+  collect/{scrape_bar,scrape_bar_history}.py  변협 스크랩(현재·Wayback 과거)
+  prepare/{load_kosis,load_klac,load_court,load_quasi,build_panel}.py  (load_court 다년 스캔)
   index/compute_llai.py            LLAI(정규화·가중치·합산)
-  model/{cluster,hypothesis}.py    클러스터링·가설검정
+  model/{cluster,hypothesis,lawyer_trend,lawyer_panel,regression,quasi_legal,court_trend}.py
   viz.py  map_viz.py  exclude_seoul.py
   config.py                        경로·지역 매핑 헬퍼
 notebooks/   01~04

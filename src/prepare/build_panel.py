@@ -47,6 +47,9 @@ def build(unit: str) -> pd.DataFrame:
     pop = _load(INTERIM / "kosis_population.csv")
     basic = _load(INTERIM / "kosis_basic.csv")
     grdp = _load(INTERIM / "kosis_grdp.csv")
+    biz = _load(INTERIM / "kosis_business.csv")      # 사업체수(선택, demand-pull)
+    quasi = _load(INTERIM / "quasi_legal.csv")       # 유사법무직렬(선택)
+    judges = _load(RAW / "court" / "judges_by_region.csv")  # 판사수(선택, region13 기준)
     klac = _load(INTERIM / "klac_legalaid.csv")     # region10 기준
     bar = _load(RAW / "bar" / "bar_region13.csv")    # region13 기준
     court = _load(INTERIM / "court_cases.csv")       # region13 기준
@@ -71,6 +74,26 @@ def build(unit: str) -> pd.DataFrame:
         gw = g.groupby(["unit", "year"], as_index=False).agg(w=("w", "sum"), p=("population", "sum"))
         gw["grdp_per_capita"] = gw["w"] / gw["p"]
         frames.append(gw[["unit", "year", "grdp_per_capita"]])
+
+    # 사업체수(선택): 수요 대리변수. sido → unit 합산.
+    if biz is not None:
+        biz["unit"] = _sido_to_unit(biz, unit)
+        bz = biz.dropna(subset=["unit"]).groupby(["unit", "year"], as_index=False)["business_count"].sum()
+        frames.append(bz)
+
+    # 유사법무직렬(선택): sido → unit 합산.
+    if quasi is not None:
+        quasi["unit"] = _sido_to_unit(quasi, unit)
+        qcols = [c for c in ["beopmusa", "byeollisa", "semusa", "quasi_total"] if c in quasi.columns]
+        q = quasi.dropna(subset=["unit"]).groupby(["unit", "year"], as_index=False)[qcols].sum()
+        frames.append(q)
+
+    # 판사수(선택): region13 템플릿 → unit 합산.
+    if judges is not None and "region13" in judges.columns:
+        j = judges.copy()
+        j["unit"] = j["region13"] if unit == "region13" else j["region13"].map(REGION13_TO_REGION10)
+        jj = j.dropna(subset=["unit"]).groupby(["unit", "year"], as_index=False)["judges"].sum()
+        frames.append(jj)
 
     # 변호사: region13 → unit
     # 스냅샷이므로 LLAI 입력(인구·저소득층·법률구조)이 모두 존재하는 최신 공통연도에 귀속

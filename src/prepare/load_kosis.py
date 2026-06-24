@@ -20,7 +20,18 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from config import RAW, INTERIM  # noqa: E402
+from config import RAW, INTERIM, canonical_sido  # noqa: E402
+
+
+def _canon(df: pd.DataFrame) -> pd.DataFrame:
+    """시도명을 정식 17개 명칭으로 통일(옛/새 표기 혼용 흡수).
+
+    GRDP는 옛 이름(강원도·전라북도), 인구는 새 이름(강원특별자치도·전북특별자치도)을
+    써서 패널 병합 때 두 권역이 매칭 실패 → 표준화로 해결.
+    """
+    df = df.copy()
+    df["sido_name"] = df["sido_name"].map(canonical_sido)
+    return df.dropna(subset=["sido_name"]).reset_index(drop=True)
 
 KOSIS = RAW / "kosis"
 SIDO17 = {
@@ -114,6 +125,7 @@ def main() -> None:
         KOSIS / "population_sigungu.csv",
         item_keep="총인구수", value_name="population",
         items_per_year=3, item_index=0)
+    pop = _canon(pop)
     pop.to_csv(INTERIM / "kosis_population.csv", index=False, encoding="utf-8-sig")
     print(f"인구: {len(pop)}행, {pop['year'].min()}~{pop['year'].max()}, "
           f"시도 {pop['sido_name'].nunique()}개")
@@ -122,14 +134,30 @@ def main() -> None:
         KOSIS / "grdp_income_sido.csv",
         item_keep="1인당 지역내총생산", value_name="grdp_per_capita",
         items_per_year=4, item_index=0)
+    grdp = _canon(grdp)
     grdp.to_csv(INTERIM / "kosis_grdp.csv", index=False, encoding="utf-8-sig")
     print(f"GRDP: {len(grdp)}행, {grdp['year'].min()}~{grdp['year'].max()}, "
           f"시도 {grdp['sido_name'].nunique()}개")
 
     basic = parse_basic_livelihood(KOSIS / "basic_livelihood_recipients.csv")
+    basic = _canon(basic)
     basic.to_csv(INTERIM / "kosis_basic.csv", index=False, encoding="utf-8-sig")
     print(f"수급자: {len(basic)}행, {basic['year'].min()}~{basic['year'].max()}, "
           f"시도 {basic['sido_name'].nunique()}개")
+
+    # [추가] 사업체수(전국사업체조사) — demand-pull 수요 대리변수. 선택(파일 있을 때만).
+    # 사업체수만 있으면 items_per_year=1, '사업체수+종사자수' 2항목이면 items_per_year=2.
+    biz_path = KOSIS / "business_count_sido.csv"
+    if biz_path.exists():
+        biz = parse_wide_repeating(
+            biz_path, item_keep="사업체수", value_name="business_count",
+            items_per_year=1, item_index=0)
+        biz = _canon(biz)
+        biz.to_csv(INTERIM / "kosis_business.csv", index=False, encoding="utf-8-sig")
+        print(f"사업체수: {len(biz)}행, {biz['year'].min()}~{biz['year'].max()}, "
+              f"시도 {biz['sido_name'].nunique()}개")
+    else:
+        print("[건너뜀] kosis/business_count_sido.csv 없음 — 사업체수 미수집(선택)")
 
     # 미리보기: 최신 연도
     print("\n[검증] 2022년 시도별 값 (있으면):")
