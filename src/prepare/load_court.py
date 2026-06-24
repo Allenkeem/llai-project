@@ -37,10 +37,13 @@ def _cells(path: Path, sheet: str):
     return list(ws.iter_rows(values_only=True))
 
 
-def _find(base: Path, keyword: str) -> Path | None:
-    """폴더에서 파일명에 keyword가 든 첫 xlsx (표기 변형 흡수: '01항.총설'/'01항_총설' 등)."""
+def _find(base: Path, *keywords: str) -> Path | None:
+    """폴더에서 파일명에 keywords가 '모두' 든 첫 xlsx.
+
+    항번호+이름을 함께 요구해 오결합 방지(표기 변형 '01항.총설'/'01항_총설' 모두 흡수).
+    """
     for f in sorted(base.glob("*.xlsx")):
-        if keyword in f.name:
+        if all(k in f.name for k in keywords):
             return f
     return None
 
@@ -54,11 +57,11 @@ def _num(v) -> float | None:
 
 def parse_main_cases(base: Path, year: int) -> pd.DataFrame:
     """총설 시트6: 법원관내별 본안사건 건수(col 5)."""
-    f = _find(base, "총설")
+    f = _find(base, "01항", "총설")
     if f is None:
         raise FileNotFoundError(f"{base.name}: 총설 파일 없음")
     rows = _cells(f, "6")
-    rec = []
+    rec, unmapped = [], []
     for r in rows:
         c0 = str(r[0]).strip() if r and r[0] else ""
         if c0.endswith("관내"):
@@ -66,12 +69,17 @@ def parse_main_cases(base: Path, year: int) -> pd.DataFrame:
             val = _num(r[5])  # 본안사건 건수
             if reg and val is not None:
                 rec.append({"region13": reg, "total_cases": val})
+            elif reg is None:
+                unmapped.append(c0)  # 매핑 실패 = 사건 누락 위험
+    if unmapped:
+        print(f"  [경고] {year} 총설 '관내' 행 미매핑(사건 누락): {unmapped} "
+              f"— config.COURT_PREFIX_TO_REGION13 확인 필요", file=sys.stderr)
     return pd.DataFrame(rec).groupby("region13", as_index=False)["total_cases"].sum()
 
 
 def parse_civil(base: Path, year: int) -> pd.DataFrame | None:
     """민사 시트6: 법원별 제1심 민사본안 접수(계, col 4). 파일 없으면 None."""
-    f = _find(base, "민사")
+    f = _find(base, "02항", "민사")
     if f is None:
         return None
     rec = []
@@ -87,7 +95,7 @@ def parse_civil(base: Path, year: int) -> pd.DataFrame | None:
 
 def parse_criminal(base: Path, year: int) -> pd.DataFrame | None:
     """형사 시트4: 법원별 제1심 형사공판 접수(계, col 1). 파일 없으면 None."""
-    f = _find(base, "형사")
+    f = _find(base, "07항", "형사")
     if f is None:
         return None
     rec = []
@@ -150,6 +158,15 @@ def main() -> None:
     df.to_csv(INTERIM / "court_cases.csv", index=False, encoding="utf-8-sig")
 
     years = sorted(df["year"].unique())
+    # 무결성 가드: 연도별 본안 합계가 정상 범위인지 + 2024 정답 대조(파싱 회귀 탐지)
+    for y in years:
+        tot = df[df["year"] == y]["total_cases"].sum()
+        if not (400_000 < tot < 2_500_000):
+            print(f"  [경고] {y} 본안사건 합계 {tot:,.0f} 비정상 — 시트/컬럼 변경 의심", file=sys.stderr)
+    if 2024 in years:
+        got = df[df["year"] == 2024]["total_cases"].sum()
+        assert abs(got - 1_106_526) < 1, f"2024 본안 합계 {got:,.0f} ≠ 1,106,526 (파싱 회귀!)"
+
     print(f"\n법원 사건(A2): {df['region13'].nunique()}개 region13 × {len(years)}개 연도 {years}")
     latest = df[df["year"] == max(years)]
     print(latest.to_string(index=False))

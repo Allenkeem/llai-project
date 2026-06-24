@@ -1,5 +1,5 @@
-﻿feature,std_coef
-grdp_per_capita,6.783
-judges,56.175
-R2,0.779
-n,13.0
+﻿feature,std_coef,source_year
+grdp_per_capita,6.769,2022
+judges,57.022,2019
+R2(in-sample),0.801,
+n,13.0,

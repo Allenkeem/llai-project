@@ -1,7 +1,7 @@
-﻿feature,std_coef
-grdp_per_capita,12.502
-cases_per_capita,50.522
-businesses_per_capita,24.054
-log_population,26.853
-R2,0.953
-n,13.0
+﻿feature,std_coef,source_year
+grdp_per_capita,12.502,2022
+cases_per_capita,50.522,2024
+businesses_per_capita,24.054,2020
+log_population,26.853,2025
+R2(in-sample),0.953,
+n,13.0,

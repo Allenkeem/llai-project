@@ -10,10 +10,16 @@
   - 피처   : grdp_per_capita (논문 독립변수1: 소득)
              cases_per_capita = 법원 본안사건 / 인구  (수요 대리; 논문의 '판사수' 자리)
              log_population   (지역 규모 통제)
-  - 표준화 : 단위가 다른 피처를 StandardScaler로 맞춰 계수를 비교 가능하게.
+  - 표준화 : 피처만 StandardScaler(타깃 A1은 원단위) → 계수는 "피처 1SD당 A1(명/10만) 변화".
+
+⚠ 주의(과장 금지):
+  - 이는 논문의 '패널 고정효과 + 조절효과(1992~2017)'를 1:1 재현한 것이 아니다.
+    FE·시계열·상호작용 없는 '단일시점 횡단면 OLS'로, 동일 변수를 비교하는 specification check.
+  - n=13에 피처 다수 → in-sample R²는 사실상 포화. 추론 불가, '방향·상대 크기'만.
+  - 피처는 가용 최신값이라 연도가 섞임(다중 빈티지). 실행 시 변수별 출처연도를 함께 출력.
 
 [해석 포인트] GRDP 계수의 부호·크기, 그리고 cases_per_capita 계수가 크면
-'변호사가 사건(수요) 많은 곳으로 끌려간다'는 demand-pull 가설(보고서 4.7)과 정합.
+'변호사가 사건(수요) 많은 곳으로 끌려간다'는 demand-pull 가설(보고서 4.7)과 정합(상관, 인과 아님).
 
 산출물:
   outputs/tables/regression_structural.csv
@@ -42,7 +48,7 @@ from config import PROCESSED, OUTPUTS  # noqa: E402
 
 # 탐색적(demand-pull) 모형: 어떤 구조요인이 변호사 밀도와 함께 움직이나
 FEATURES = ["grdp_per_capita", "cases_per_capita", "businesses_per_capita", "log_population"]
-# 논문(조민하 2021) 재현 모형: 변호사밀도 ~ GRDP + 판사수
+# 논문(조민하 2021) 변수의 '단일시점 비교'(1:1 재현 아님 — FE·시계열·조절효과 없음)
 THESIS_FEATURES = ["grdp_per_capita", "judges"]
 LABEL = {
     "grdp_per_capita": "1인당 GRDP",
@@ -62,6 +68,15 @@ def _latest_panel_col(unit: str, col: str) -> pd.Series | None:
     if g.empty:
         return None
     return g.groupby("region")[col].last()
+
+
+def _latest_panel_year(unit: str, col: str) -> int | None:
+    """패널에서 col이 마지막으로 존재하는 연도(빈티지 표기용)."""
+    panel = pd.read_csv(PROCESSED / f"panel_{unit}.csv")
+    if col not in panel.columns:
+        return None
+    g = panel.dropna(subset=[col])
+    return None if g.empty else int(g["year"].max())
 
 
 def build_features(unit: str = "region13") -> pd.DataFrame:
@@ -128,33 +143,47 @@ def fig_coef(result: dict, save: bool = True):
     return fig
 
 
-def _save_table(result: dict, path: Path) -> None:
+def _save_table(result: dict, path: Path, vintages: dict | None = None) -> None:
+    vintages = vintages or {}
     path.parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(
-        [{"feature": f, "std_coef": c} for f, c in result["coef"].items()]
-        + [{"feature": "R2", "std_coef": round(result["r2"], 3)},
-           {"feature": "n", "std_coef": result["n"]}]
-    ).to_csv(path, index=False, encoding="utf-8-sig")
+    rows = [{"feature": f, "std_coef": c, "source_year": vintages.get(f, "")}
+            for f, c in result["coef"].items()]
+    rows += [{"feature": "R2(in-sample)", "std_coef": round(result["r2"], 3), "source_year": ""},
+             {"feature": "n", "std_coef": result["n"], "source_year": ""}]
+    pd.DataFrame(rows).to_csv(path, index=False, encoding="utf-8-sig")
 
 
 def main(unit: str = "region13") -> None:
     df = build_features(unit)
 
-    print("── [탐색적] demand-pull 구조요인 회귀 ──")
+    # 변수별 출처연도(다중 빈티지) — 단일 단면이 아님을 정직히 표기
+    vint = {
+        "grdp_per_capita": _latest_panel_year(unit, "grdp_per_capita"),
+        "cases_per_capita": _latest_panel_year(unit, "total_cases"),
+        "businesses_per_capita": _latest_panel_year(unit, "business_count"),
+        "judges": _latest_panel_year(unit, "judges"),
+        "log_population": _latest_panel_year(unit, "population"),
+    }
+    print("⚠ 다중 빈티지(변수별 출처연도) — 단일 단면 아님, 가용 최신값 혼합:")
+    print(f"    타깃 A1(변호사): 2026-06 스냅샷  |  " +
+          "  ".join(f"{k}:{v}" for k, v in vint.items() if v is not None))
+
+    print("\n── [탐색적·단일시점 OLS] demand-pull 구조요인 회귀 (n=13, in-sample R²) ──")
     result = fit_structural(df, target="A1")
     fig_coef(result)
-    _save_table(result, OUTPUTS / "tables" / "regression_structural.csv")
+    _save_table(result, OUTPUTS / "tables" / "regression_structural.csv", vint)
     print("저장: outputs/tables/regression_structural.csv, outputs/figures/fig_regression_coef.png")
 
-    # 논문(조민하 2021) 재현: 변호사밀도 ~ GRDP + 판사수 (판사수 데이터 있을 때만)
+    # 논문(조민하 2021) 변수의 단일시점 비교 — 1:1 재현 아님(FE·시계열·조절효과 없음)
     if "judges" in df.columns:
-        print("\n── [논문 재현] 변호사밀도 ~ GRDP + 판사수 (조민하 2021 모형) ──")
+        print("\n── [논문 변수 단일시점 비교 — 1:1 재현 아님] 변호사밀도 ~ GRDP + 판사수 ──")
+        print("   (논문은 패널 고정효과+조절효과 1992~2017; 여기선 횡단면 OLS·specification check)")
         rep = fit_structural(df, target="A1", features=THESIS_FEATURES)
-        _save_table(rep, OUTPUTS / "tables" / "regression_thesis_replication.csv")
+        _save_table(rep, OUTPUTS / "tables" / "regression_thesis_replication.csv", vint)
         print("저장: outputs/tables/regression_thesis_replication.csv")
     else:
         print("\n[안내] 판사수(data/raw/court/judges_by_region.csv) 추가 시 "
-              "논문 회귀(변호사밀도~GRDP+판사수) 재현이 자동 활성화됩니다.")
+              "논문 변수 단일시점 비교(변호사밀도~GRDP+판사수)가 자동 활성화됩니다.")
 
 
 if __name__ == "__main__":

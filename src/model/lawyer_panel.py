@@ -31,19 +31,22 @@ def _history_to_region13() -> pd.DataFrame:
     if hist is None or not len(hist):
         return pd.DataFrame()
 
-    rows = [hist.assign(region13=hist["bar_association"].map(BAR_TO_REGION13))]
+    hist_df = hist.assign(region13=hist["bar_association"].map(BAR_TO_REGION13))
+    rows = [hist_df]
 
     # 현재(라이브) 스냅샷을 최신 연도로 보강
     cur_path = RAW / "bar" / "bar_region13.csv"
     if cur_path.exists():
         cur = pd.read_csv(cur_path)
         year = int(str(cur["asof"].iloc[0])[:4]) if "asof" in cur.columns else 2026
+        # 같은 연도가 아카이브에도 있으면 라이브로 '덮어쓰기'(합산 중복 방지)
+        rows[0] = hist_df[hist_df["year"] != year]
         rows.append(pd.DataFrame({
             "region13": cur["region13_name"], "year": year, "practicing": cur["practicing"]}))
 
     df = pd.concat(rows, ignore_index=True).dropna(subset=["region13"])
-    return (df.groupby(["region13", "year"], as_index=False)["practicing"].sum()
-              .drop_duplicates(["region13", "year"], keep="last"))
+    # 같은 region13에 여러 지방회(경기중앙+경기북부 등)가 매핑되므로 연도×권역 합산
+    return df.groupby(["region13", "year"], as_index=False)["practicing"].sum()
 
 
 def concentration_trend(reg: pd.DataFrame) -> pd.DataFrame:

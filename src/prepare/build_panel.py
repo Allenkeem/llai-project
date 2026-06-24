@@ -161,7 +161,9 @@ def main() -> None:
         panel.to_csv(out, index=False, encoding="utf-8-sig")
         print(f"저장: {out.name}  ({len(panel)}행, {panel['year'].nunique()}개 연도, "
               f"{panel['region'].nunique()}개 권역)")
-        # 변호사 스냅샷 기준연도 단면 미리보기
+        # 변호사 스냅샷 기준연도 단면 미리보기 (변호사 데이터 없으면 건너뜀)
+        if "practicing" not in panel.columns or panel["practicing"].notna().sum() == 0:
+            continue
         bar_year = int(panel.loc[panel["practicing"].notna(), "year"].max())
         print(f"[기준연도 {bar_year} 단면]")
         snap = panel[panel["year"] == bar_year]

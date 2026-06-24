@@ -122,7 +122,7 @@ python src/index/compute_llai.py --demo
 ```bash
 python src/prepare/load_quasi.py          # 유사법무직렬(법무사·변리사·세무사) → interim
 python src/prepare/build_panel.py         # 사업체수·판사수·유사직렬·다년 A2 자동 흡수
-python src/model/regression.py            # 사업체수→demand-pull · 판사수→논문 회귀 재현(데이터 있을 때)
+python src/model/regression.py            # 사업체수→demand-pull · 판사수→논문 변수 단일시점 비교(1:1 재현 아님)
 python src/model/quasi_legal.py           # '무변촌' 재정의: 변호사↓ 지역을 유사직렬이 메우나
 python src/model/court_trend.py           # 과거 사법연감 다년 → 본안사건·인구당 사건수 추세
 ```
@@ -130,7 +130,7 @@ python src/model/court_trend.py           # 과거 사법연감 다년 → 본�
 | 추가 데이터 | 여는 분석 | 활성화 파일 |
 |---|---|---|
 | 사업체수(KOSIS) | demand-pull 실측 | `data/raw/kosis/business_count_sido.csv` |
-| 판사수(대법원규칙) | 논문 회귀 1:1 재현 | `data/raw/court/judges_by_region.csv` |
+| 판사수(대법원규칙) | 논문 변수 단일시점 비교(spec check) | `data/raw/court/judges_by_region.csv` |
 | 유사법무직렬 | 무변촌 재정의 | `data/raw/quasi/quasi_legal.csv` |
 | 과거 사법연감 | A2 다년 시계열 | `data/raw/court/(YYYY)년_사건개황/` |
 
