@@ -146,7 +146,10 @@ def fig_coef(result: dict, save: bool = True):
 def _save_table(result: dict, path: Path, vintages: dict | None = None) -> None:
     vintages = vintages or {}
     path.parent.mkdir(parents=True, exist_ok=True)
-    rows = [{"feature": f, "std_coef": c, "source_year": vintages.get(f, "")}
+    def _yr(f):  # int/None을 깔끔한 문자열로(2022.0 방지)
+        v = vintages.get(f)
+        return "" if v is None else str(v)
+    rows = [{"feature": f, "std_coef": c, "source_year": _yr(f)}
             for f, c in result["coef"].items()]
     rows += [{"feature": "R2(in-sample)", "std_coef": round(result["r2"], 3), "source_year": ""},
              {"feature": "n", "std_coef": result["n"], "source_year": ""}]
@@ -156,13 +159,15 @@ def _save_table(result: dict, path: Path, vintages: dict | None = None) -> None:
 def main(unit: str = "region13") -> None:
     df = build_features(unit)
 
-    # 변수별 출처연도(다중 빈티지) — 단일 단면이 아님을 정직히 표기
+    # 변수별 출처연도(다중 빈티지) — 단일 단면이 아님을 정직히 표기.
+    # cases_per_capita·log_population은 LLAI 단면(2024)에서 산출되므로 그 연도를 표기.
+    cross_year = int(pd.read_csv(OUTPUTS / "tables" / f"llai_{unit}.csv")["year"].iloc[0])
     vint = {
         "grdp_per_capita": _latest_panel_year(unit, "grdp_per_capita"),
-        "cases_per_capita": _latest_panel_year(unit, "total_cases"),
+        "cases_per_capita": cross_year,
         "businesses_per_capita": _latest_panel_year(unit, "business_count"),
         "judges": _latest_panel_year(unit, "judges"),
-        "log_population": _latest_panel_year(unit, "population"),
+        "log_population": cross_year,
     }
     print("⚠ 다중 빈티지(변수별 출처연도) — 단일 단면 아님, 가용 최신값 혼합:")
     print(f"    타깃 A1(변호사): 2026-06 스냅샷  |  " +
@@ -179,8 +184,8 @@ def main(unit: str = "region13") -> None:
         print("\n── [논문 변수 단일시점 비교 — 1:1 재현 아님] 변호사밀도 ~ GRDP + 판사수 ──")
         print("   (논문은 패널 고정효과+조절효과 1992~2017; 여기선 횡단면 OLS·specification check)")
         rep = fit_structural(df, target="A1", features=THESIS_FEATURES)
-        _save_table(rep, OUTPUTS / "tables" / "regression_thesis_replication.csv", vint)
-        print("저장: outputs/tables/regression_thesis_replication.csv")
+        _save_table(rep, OUTPUTS / "tables" / "regression_thesis_comparison.csv", vint)
+        print("저장: outputs/tables/regression_thesis_comparison.csv")
     else:
         print("\n[안내] 판사수(data/raw/court/judges_by_region.csv) 추가 시 "
               "논문 변수 단일시점 비교(변호사밀도~GRDP+판사수)가 자동 활성화됩니다.")
